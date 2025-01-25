@@ -172,7 +172,7 @@ router.post(
               const result = await cloudinary.uploader.upload(
                 convertToBase64(picture),
                 {
-                  folder: `api/vinted-v2/offers/${newOffer._id}`,
+                  folder: `api/vinted/offers/${newOffer._id}`,
                   public_id: "preview",
                 }
               );

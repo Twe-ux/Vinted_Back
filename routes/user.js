@@ -65,7 +65,7 @@ router.post("/user/signup", async (req, res) => {
           const result = await cloudinary.uploader.upload(
             convertToBase64(req.files.avatar),
             {
-              folder: `api/vinted-v2/users/${newUser._id}`,
+              folder: `api/vinted/users/${newUser._id}`,
               public_id: "avatar",
             }
           );
