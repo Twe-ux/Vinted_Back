@@ -20,7 +20,7 @@ const isAuthenticated = require("../middleware/isAuthenticated");
 
 // Route qui nous permet de récupérer une liste d'annonces, en fonction de filtres
 // Si aucun filtre n'est envoyé, cette route renverra l'ensemble des annonces
-router.get("/offers", async (req, res) => {
+router.get("/offer", async (req, res) => {
   try {
     // Création d'un objet dans lequel on va sotcker nos différents filtres
     let filters = {};
@@ -96,7 +96,7 @@ router.get("/offers", async (req, res) => {
 });
 
 // Route qui permmet de récupérer les informations d'une offre en fonction de son id. Cette route necessite un params
-router.get("/offers/:id", async (req, res) => {
+router.get("/offer/:id", async (req, res) => {
   try {
     // On va chercher l'offre correspondante à l'id reçu et on populate sa clef owner en sélectionnant uniquement les clefs username, phone et avatar de la clef account
     const offer = await Offer.findById(req.params.id).populate({
