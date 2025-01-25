@@ -9,6 +9,9 @@ const fileUpload = require("express-fileupload");
 // Import de la fonction convertToBase64
 const convertToBase64 = require("../utils/convertToBase64");
 
+const stripe = require("stripe")(process.env.STRIPE_API_KEY);
+// console.log(stripe);
+
 // Import du model User et Offer
 // afin d'éviter des erreurs (notamment dues à d'eventuelles références entre les collections)
 // nous vous conseillons d'importer tous vos models dans toutes vos routes
@@ -200,8 +203,24 @@ router.post("/publish", isAuthenticated, fileUpload(), async (req, res) => {
   }
 });
 
+// Route permettant la mise en payement de l'article via stripe
+router.post("/payment", async (req, res) => {
+  try {
+    const stripeResponse = await stripe.paymentIntents.create({
+      amount: 2000,
+      currency: "eur",
+      description: "La descritption du produit",
+    });
+    console.log(stripeResponse);
+
+    res.json(stripeResponse.client_secret);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
 // Route pour modifier une offre, elle prend un params, on utilise fileUpload pour lire les body de type formData. La route est protégée par le middleware isAuthenticated. Seul quelqu'un de connecté peut faire cette requête.
-router.put("/offers/:id", isAuthenticated, fileUpload(), async (req, res) => {
+router.put("/offer/:id", isAuthenticated, fileUpload(), async (req, res) => {
   // On va chercher l'offre correspondant à l'id
   const offerToModify = await Offer.findById(req.params.id);
   try {
@@ -277,7 +296,7 @@ router.put("/offers/:id", isAuthenticated, fileUpload(), async (req, res) => {
 });
 
 // Route pour supprimer une offre, protégée par le middleware isAuthenticated, elle prend un params
-router.delete("/offers/:id", isAuthenticated, async (req, res) => {
+router.delete("/offer/:id", isAuthenticated, async (req, res) => {
   try {
     //Je supprime ce qui il y a dans le dossier portant le nom de l'id de l'offre sur cloudinary
     await cloudinary.api.delete_resources_by_prefix(
@@ -292,107 +311,6 @@ router.delete("/offers/:id", isAuthenticated, async (req, res) => {
     res.status(200).json("Offer deleted succesfully !");
   } catch (error) {
     res.status(500).json({ message: error.message });
-  }
-});
-
-// CETTE ROUTE SERT AU RESET DE LA BDD ENTRE 2 SESSIONS DE FORMATION. CELA NE FAIT PAS PARTIE DE L'EXERCICE.
-// RESET ET INITIALISATION BDD
-router.get("/reset-offers", fileUpload(), async (req, res) => {
-  const token = req.headers.authorization.replace("Bearer ", "");
-
-  if (token !== process.env.ADMIN_TOKEN) {
-    return res.status(401).json({ error: "Unauthorized" });
-  }
-
-  const allUserId = await User.find().select("_id");
-  // Il y a 21 users dans le fichier owners.json
-  if (allUserId.length > 22) {
-    return res
-      .status(400)
-      .send(
-        "Il faut d'abord reset la BDD de users. Voir la route /reset-users"
-      );
-  } else {
-    // Supprimer toutes images dudossier offers
-    const offers = await Offer.find();
-    try {
-      //   const deleteResources = await cloudinary.api.delete_resources_by_prefix(
-      //     "api/vinted-v2/offers"
-      //   );
-      // } catch (error) {
-      //   res.status(500).json({ message: error.message });
-      // }
-      // // On supprime les dossiers qui sont, maintenant, vides
-      // try {
-      //   const folderDeletionPromises = offers.map((offer) => {
-      //     if (offer.product_image) {
-      //       return cloudinary.api.delete_folder(
-      //         `/api/vinted-v2/offers/${offer._id}`
-      //       );
-      //     } else {
-      //       return null;
-      //     }
-      //   });
-
-      //   await Promise.all(folderDeletionPromises);
-
-      // Vider la collection Offer
-      await Offer.deleteMany({});
-    } catch (error) {
-      res.status(500).json({ message: error.message });
-    }
-
-    // Créer les annonces à partir du fichier products.json
-    for (let i = 0; i < products.length; i++) {
-      try {
-        // Création de la nouvelle annonce
-        const newOffer = new Offer({
-          product_name: products[i].product_name,
-          product_description: products[i].product_description,
-          product_price: products[i].product_price,
-          product_details: products[i].product_details,
-          // créer des ref aléatoires
-          owner: allUserId[Math.floor(Math.random() * allUserId.length)],
-        });
-
-        // Uploader l'image principale du produit
-
-        const resultImage = await cloudinary.uploader.upload(
-          products[i].product_image.secure_url,
-          {
-            folder: `api/vinted-v2/offers/${newOffer._id}`,
-            public_id: "preview",
-          }
-        );
-
-        // Uploader les images de chaque produit
-        newProduct_pictures = [];
-        for (let j = 0; j < products[i].product_pictures.length; j++) {
-          try {
-            const resultPictures = await cloudinary.uploader.upload(
-              products[i].product_pictures[j].secure_url,
-              {
-                folder: `api/vinted-v2/offers/${newOffer._id}`,
-              }
-            );
-
-            newProduct_pictures.push(resultPictures);
-          } catch (error) {
-            res.status(500).json({ message: error.message });
-          }
-        }
-
-        newOffer.product_image = resultImage;
-        newOffer.product_pictures = newProduct_pictures;
-
-        await newOffer.save();
-        console.log(`✅ offer saved : ${i + 1} / ${products.length}`);
-      } catch (error) {
-        res.status(500).json({ message: error.message });
-      }
-    }
-    res.send("Done !");
-    console.log(`🍺 All offers saved !`);
   }
 });
 
